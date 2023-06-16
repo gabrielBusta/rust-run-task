@@ -1,8 +1,6 @@
-use std::borrow::Borrow;
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
-use std::thread;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
@@ -83,7 +81,13 @@ fn remove_dir_all(path: &Path) -> io::Result<()> {
     fs::remove_dir_all(path)
 }
 
-fn call_windows_retry<F>(func_name: &str, func: F, path: &Path, retry_max: u32, retry_delay: u64) -> io::Result<()>
+fn call_windows_retry<F>(
+    func_name: &str,
+    func: F,
+    path: &Path,
+    retry_max: u32,
+    retry_delay: u64,
+) -> io::Result<()>
 where
     F: for<'a> Fn(&'a Path) -> io::Result<()>,
 {
