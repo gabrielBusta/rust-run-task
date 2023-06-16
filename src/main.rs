@@ -4,7 +4,6 @@ use std::path::Path;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
-#[cfg(unix)]
 
 const SECRET_BASEURL_TPL: &str = "http://taskcluster/secrets/v1/secret/{}";
 
