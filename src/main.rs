@@ -1,7 +1,8 @@
-use std::fs::{self, remove_dir_all, remove_file};
+use std::borrow::Borrow;
+use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
-use std::thread::sleep;
+use std::thread;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
@@ -74,36 +75,38 @@ fn print_line(prefix: &str, m: &str) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn call_windows_retry<F, P: AsRef<Path>>(
-    func_name: &str,
-    func: F,
-    path: P,
-    retry_max: u32,
-    retry_delay: u64,
-) -> io::Result<()>
+fn remove_file(path: &Path) -> io::Result<()> {
+    fs::remove_file(path)
+}
+
+fn remove_dir_all(path: &Path) -> io::Result<()> {
+    fs::remove_dir_all(path)
+}
+
+fn call_windows_retry<F>(func_name: &str, func: F, path: &Path, retry_max: u32, retry_delay: u64) -> io::Result<()>
 where
-    F: Fn(&P) -> io::Result<()>,
+    F: for<'a> Fn(&'a Path) -> io::Result<()>,
 {
     let mut retry_count = 0;
     loop {
-        match func(&path) {
+        match func(path) {
             Err(e) => match e.kind() {
                 io::ErrorKind::PermissionDenied | io::ErrorKind::NotFound => {
                     if retry_count == retry_max {
                         return Err(io::Error::new(
-                            e.kind(),
-                            "Maximum number of retries reached",
+                            io::ErrorKind::Other,
+                            format!("Maximum number of retries reached. Error: {}", e),
                         ));
                     }
                     retry_count += 1;
                     println!(
-                        "{}() failed for \"{:?}\". Reason: {} ({:?}). Retrying...",
+                        "Function {} failed for \"{}\". Reason: {} ({:?}). Retrying...",
                         func_name,
-                        path.as_ref(),
+                        path.display(),
                         e,
                         e.kind()
                     );
-                    sleep(Duration::from_secs(retry_count as u64 * retry_delay));
+                    std::thread::sleep(Duration::from_millis(retry_count as u64 * retry_delay));
                 }
                 _ => return Err(e),
             },
